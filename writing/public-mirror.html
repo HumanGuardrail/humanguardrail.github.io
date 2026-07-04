@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Public packages only need to be downloaded once — Gustavo Schneiter</title>
+<meta name="description" content="The design of a cross-tenant, content-addressed mirror for npm, PyPI, Homebrew and OCI — where public bytes are fetched once and shared, and exactly where that stops being safe.">
+<meta name="author" content="Gustavo Schneiter">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Public packages only need to be downloaded once">
+<meta property="og:description" content="A cross-tenant, content-addressed package mirror — and exactly where sharing stops being safe.">
+<meta property="og:url" content="https://humanguardrail.github.io/writing/public-mirror.html">
+<link rel="canonical" href="https://humanguardrail.github.io/writing/public-mirror.html">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0e1013" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>▲</text></svg>">
+<style>
+  :root{
+    color-scheme:light dark;
+    --ink:#0f1115; --body:#2a2f37; --muted:#5b6673; --faint:#788393;
+    --line:#e7e9ee; --bg:#ffffff; --bg2:#f7f8fa; --accent:#2563eb; --accent-ink:#1d4ed8;
+    --code-bg:#f4f5f7; --code-fg:#1f2937; --navbg:rgba(255,255,255,.85);
+    --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --ink:#e7e9ee; --body:#c2c8d2; --muted:#8b93a1; --faint:#6f7885;
+      --line:#23262c; --bg:#0e1013; --bg2:#15181d; --accent:#6ea8ff; --accent-ink:#8db8ff;
+      --code-bg:#181b21; --code-fg:#d5dae2; --navbg:rgba(14,16,19,.85);
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--body);
+    font-family:var(--sans);font-size:18px;line-height:1.72;
+    -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  nav{position:sticky;top:0;z-index:20;background:var(--navbg);backdrop-filter:saturate(1.4) blur(8px);border-bottom:1px solid var(--line)}
+  nav .n{max-width:720px;margin:0 auto;padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between}
+  nav a{color:var(--muted);text-decoration:none;font-size:14.5px;font-weight:500}
+  nav a:hover{color:var(--ink)}
+  nav .brand{font-weight:700;color:var(--ink);letter-spacing:-.02em}
+  nav .brand span{color:var(--accent)}
+  .wrap{max-width:720px;margin:0 auto;padding:56px 24px 120px}
+  .kicker{font-family:var(--mono);font-size:13px;color:var(--accent-ink);font-weight:600;letter-spacing:.02em;margin-bottom:18px}
+  h1{color:var(--ink);font-size:clamp(28px,4.6vw,40px);font-weight:800;letter-spacing:-.025em;line-height:1.14;margin:0 0 12px}
+  .byline{color:var(--faint);font-size:14px;font-family:var(--mono);margin-bottom:44px}
+  h2{color:var(--ink);font-size:22px;font-weight:750;letter-spacing:-.015em;margin:46px 0 6px}
+  p{margin:16px 0}
+  strong{color:var(--ink);font-weight:680}
+  a{color:var(--accent);text-decoration:none;border-bottom:1px solid color-mix(in srgb,var(--accent) 30%,transparent)}
+  a:hover{color:var(--accent-ink);border-bottom-color:var(--accent-ink)}
+  code{font-family:var(--mono);font-size:.85em;background:var(--code-bg);color:var(--code-fg);padding:.12em .4em;border-radius:4px}
+  ul{margin:16px 0;padding-left:0;list-style:none}
+  li{position:relative;padding-left:26px;margin:14px 0}
+  li::before{content:"";position:absolute;left:6px;top:.62em;width:6px;height:6px;border-radius:50%;background:var(--accent);opacity:.55}
+  hr{border:0;border-top:1px solid var(--line);margin:48px 0}
+  hr + p{color:var(--faint);font-size:15px;font-style:italic}
+  footer{border-top:1px solid var(--line);margin-top:64px;padding-top:24px;font-family:var(--mono);font-size:13px;color:var(--faint)}
+  footer a{color:var(--faint)}
+</style>
+</head>
+<body>
+<nav><div class="n"><a class="brand" href="/">Gustavo Schneiter<span>.</span></a><a href="/#writing">← all writing</a></div></nav>
+<article class="wrap">
+  <div class="kicker">// on execution infrastructure</div>
+<h1>Public packages
+only need to be downloaded once</h1>
+<div class="byline">Gustavo Schneiter · 2026</div>
+
+<p>Every day, the world’s CI fleet re-downloads the same immutable
+bytes: the same numpy wheel, the same lodash tarball, on every fresh
+runner and every cache-evicted container. PyPI alone served <a
+href="https://clickpy.clickhouse.com/report/march-2026.html">136.7
+billion downloads in March 2026</a> — about 4.4 billion a day. You don’t
+get to that number with humans typing <code>pip install</code>; the
+overwhelming majority is CI runners and automated builds re-fetching
+bytes somebody else already fetched an hour earlier. (That last
+inference is mine; the download count is the report’s.) The cost lands
+as redundancy and latency everywhere, and on some surfaces — Docker Hub
+most famously — as rate-limit ceilings.</p>
+<p>CoreLink — the content-addressed cache platform I’m building (closed
+source; this post is the design and its exact current state, with code
+references I can show) — treats this as a storage-identity problem: if
+an artifact is addressed by what it <em>is</em>, a byte that never
+changes only needs to enter the system once. The interesting part is
+what happens when “once” means <em>once across every customer</em> — and
+where that idea stops being safe.</p>
+<h2 id="prior-art-first">Prior art, first</h2>
+<p>None of the ingredients are new; the combination is the design.</p>
+<ul>
+<li><strong>The Go module ecosystem</strong> is the gold standard for
+“packages fetched once, verified”: <code>proxy.golang.org</code> is a
+global mirror and <code>sum.golang.org</code> is a transparency log of
+module checksums, so every <code>go get</code> can hit one shared cache
+and verify what it got. It is per-language, operated by Google, and
+private modules live outside the scheme.</li>
+<li><strong>Public mirrors and registry CDNs already share public bytes
+globally</strong> — <code>mirror.gcr.io</code>, the Linux distros’
+mirror networks, AWS ECR’s pull-through cache, and the donated CDN in
+front of PyPI and the registry CDNs in front of npm. They solve
+<em>transfer</em>; they don’t solve <em>identity</em>: none of them
+co-locates those bytes with your private artifacts and your build cache
+in one addressing scheme, and Docker Hub’s rate limits follow you
+through most of them.</li>
+<li><strong>pnpm</strong> stores every package version once in a local
+content-addressable store and hard-links it into
+<code>node_modules</code> — the same dedup insight, scoped to one
+machine.</li>
+<li><strong>Nix and Guix</strong> binary caches are hash-addressed
+(input-addressed, mostly, rather than content-addressed) and
+community-shared — but they cache their own build model, not the
+npm/PyPI/OCI artifacts teams already consume.</li>
+<li><strong>Artifactory, Nexus, devpi, Verdaccio, Athens</strong>, and a
+registry run as a pull-through cache are the per-organization staple;
+SaaS registries like <strong>Cloudsmith and GitHub Packages</strong>
+host multiple ecosystems per-org in the cloud. Every org’s cache starts
+cold.</li>
+</ul>
+<p>The narrow thing I wanted, which I couldn’t find:
+<strong>cross-tenant dedup of public, immutable bytes, co-located with
+private artifacts in one addressing scheme</strong> — on the same
+content-addressed store that already serves the build cache. A public
+wheel and a private Bazel action result become two entries in one
+keyspace, shared and isolated by namespace rather than by living in
+different systems.</p>
+<h2 id="the-design-access-is-gated-content-is-shared">The design: access
+is gated, content is shared</h2>
+<p>CoreLink exposes each ecosystem through an adapter that speaks its
+native protocol — npm registry (tarballs + metadata), the PyPI simple
+index (wheels/sdists), Homebrew bottles, and the OCI Distribution Spec
+v1.1 pull/push surface (blobs, manifests, tag lists; no referrers API
+yet, and push/pull only — no public read-through mirror yet, so it’s not
+the answer to Docker Hub’s rate limits today) — so docker, podman,
+containerd and Helm are designed to talk to it with nothing more than a
+registry config change.</p>
+<p>Under the adapters there is one rule: <strong>the token gates access;
+the content is shared.</strong> It is live end-to-end on brew today —
+with <code>HOMEBREW_ARTIFACT_DOMAIN</code> and a
+<code>HOMEBREW_DOCKER_REGISTRY_TOKEN</code> bearer, a stock
+<code>brew</code> client pulls real bottles through the mirror — and the
+exact state of every other surface is below. Public upstream bytes are
+stored once, under a shared <code>_public</code> namespace, and served
+to any authenticated tenant. Tenant identity never comes from the URL —
+the tenant segment in the path is routing-only, and the real tenant is
+derived from the verified PAT on every request to these surfaces
+(<code>PipPatResolver::resolve</code>,
+<code>BrewPatResolver::resolve</code>; on OCI, from the bearer minted by
+the two-leg token exchange). On the package surfaces, a request without
+a valid token gets nothing; a request with one gets bytes some other
+tenant may have caused to be fetched last month.</p>
+<p>The first time any tenant’s brew asks for a given bottle, the service
+fetches it from upstream (read-through), verifies it against the digest
+in its URL, stores it content-addressed, and serves it. Every request
+after that — from any tenant — is served from the store: fetched from
+upstream once, modulo two asides (concurrent first requests can race and
+fetch twice — both store identical bytes — and a damaged or missing blob
+is deliberately treated as a miss and re-fetched). Today nothing is
+evicted; what eviction should even mean for a namespace whose value is
+being permanently warm is an open question below.</p>
+<p>Private artifacts live in the same system but never in
+<code>_public</code>: npm <code>@scoped</code> <em>metadata</em> stays
+per-tenant by construction (<code>namespace_for_meta_key</code>), and
+tarball bytes are per-tenant for everything — more on why in a moment.
+The public/private split is enforced in the keyspace, not in a review
+process.</p>
+<p>That shared namespace is also the economics: each tenant’s ordinary
+traffic warms the cache for the next one — that’s the whole mechanism;
+there is no step two. And because the store is Cloudflare R2, which (as
+of current pricing) charges no egress, serving a cached bottle costs
+storage and a read, not a transfer fee. Per-org mirrors structurally
+can’t compound like this; every one of them starts cold.</p>
+<h2 id="where-once-stops-being-safe">Where “once” stops being safe</h2>
+<p>The part worth a post: cross-tenant sharing is tempting to justify
+with two properties — the artifact is <strong>immutable</strong>, and
+the client <strong>verifies it independently</strong>. But the second
+property doesn’t always hold: it does for lockfile and
+<code>--require-hashes</code> workflows, while a hashless
+<code>pip install</code> trusts the mirror for the index it serves and —
+once the wheel client path closes — the bytes too, exactly as it would
+trust any proxy.</p>
+<p>So the rule I can actually defend is narrower, and it is about
+artifact bytes: <strong>share only artifact bytes that are immutable and
+digest-verified — verified by the mirror always, before they enter the
+store, and by the client wherever its workflow does.</strong> Where even
+that floor can’t be established, don’t share. That rule, one boundary
+that is pure engineering debt, and one surface not yet built at all are
+how the implementation is split today:</p>
+<ul>
+<li><strong>Homebrew bottles: shared cross-tenant and live
+end-to-end.</strong> <code>HOMEBREW_ARTIFACT_DOMAIN</code> points a
+stock client’s bottle traffic at the mirror — a real
+<code>brew fetch hello</code> routes through it, returns the bottle
+byte-for-byte (sha256 verified against the client’s own copy), and the
+same blob URL without a token returns 401. Bottles use the canonical
+bottle URL as the <em>lookup</em> identity, resolving through a
+two-level cache (key → content hash → blob), so storage identity is
+still the content itself.</li>
+<li><strong>PyPI wheels/sdists: the shared store is live; the client
+path is not yet.</strong> The cross-tenant wheel store and its pre-put
+sha256 verification are shipped code, and released PyPI files are
+immutable (yanking hides them; it doesn’t change bytes) — but the index
+the mirror serves does not yet rewrite file URLs to point at itself, so
+a stock <code>pip install</code> exercises the index cache and still
+downloads wheels from PyPI’s CDN. Closing that loop is the remaining
+client-path work, and until it lands, “live” for pip means the
+index.</li>
+<li><strong>npm: tarball bytes are per-tenant today — the
+engineering-debt boundary, not a policy triumph.</strong> The storage
+port sees only <code>(tenant, hash-of-URL)</code>; the package name, and
+with it the public-vs-<code>@scoped</code> signal, is invisible at that
+layer. Sharing blindly would risk leaking private scoped tarballs across
+tenants, so the code fails closed to per-tenant until the signal is
+threaded through — forfeiting, for now, the dedup win on the largest
+ecosystem. And — the same client-path gap as pip — the served metadata
+doesn’t rewrite <code>dist.tarball</code>, so a stock npm client fetches
+tarballs from npm’s CDN; the per-tenant tarball store is shipped but not
+yet on the client path. (npm’s <code>unpublish</code> history is a
+second, softer reason to move carefully.)</li>
+<li><strong>OCI: a per-tenant push/pull registry today — read-through
+mirroring isn’t built in any form.</strong> The adapter has no
+upstream-fetch path at all; it stores and serves what tenants push,
+isolated per tenant. So the Docker Hub pain from the intro is the one
+surface this doesn’t yet touch. Tags are mutable by design and only
+digests are immutable; sharing public base layers is the obvious win,
+and the open decision is tracked in the module doc.</li>
+<li><strong>The build-cache surfaces (sccache, Bazel, Turborepo) never
+touch <code>_public</code> at all</strong> — they cache your own build
+outputs, which are private by nature. (Mirroring crates.io itself —
+public, immutable, sha256-carried in the index — would be the easiest
+future addition by this post’s own rule; it doesn’t exist today.)</li>
+</ul>
+<p>Cross-tenant byte sharing means a bug in the mirror’s write path is a
+supply-chain incident multiplied by your customer count, so the
+population rules deserve exact language. Tenants don’t write
+<code>_public</code> — population happens only through the service’s own
+upstream fetch.</p>
+<p>Brew’s fetch path is the strict one: a pinned first-hop origin
+(redirects after it follow the same internal-IP-literal guard as pip’s),
+an allowlist of <code>homebrew/core</code> and
+<code>homebrew/cask</code>, a digest-in-the-URL requirement for anything
+cached, verification against that digest before the put, and
+re-verification of the content hash on read.</p>
+<p>Pip’s path is close behind, with one structural difference. The index
+host is pinned, and the second hop — the wheel URL the index supplies —
+is checked against a two-host allowlist (the index origin plus
+<code>files.pythonhosted.org</code>), with redirects refused when they
+point at internal IP literals (hostnames aren’t resolved and checked — a
+narrower guard than it sounds). The stored key is the wheel’s own
+sha256, verified against the bytes before the put — so the attack
+surface is that verification step, not the keyspace. What pip lacks,
+structurally, is brew’s digest-in-the-URL: the sha256 the mirror
+verifies comes from the same index the mirror fetched — the
+trust-the-mirror problem above, now in structural form.</p>
+<p>Sharing the bytes is half the failure surface; who pays to serve them
+is the other half. Pulls are governed like the work they are: on the OCI
+surface every method including GET is charged against a per-tenant
+monthly dollar ceiling that fails closed — for a resolved tenant,
+over-ceiling or unable-to-cost-check is rejected rather than silently
+eaten. An adversarial pass I ran against my own gate flagged unlimited
+authenticated pulls as a cost hole, and that carve-out is closed. The
+gap that remains is earlier in the pipeline, and flagged in the source:
+a request with no resolvable bearer at all passes the meter uncounted,
+pending a trust-path review.</p>
+<p>And one comparison I owe the reader: on auditability, this is
+strictly weaker today than Go’s proxy + sumdb — there is no transparency
+log of what <code>_public</code> contains. That is the most important
+open question below, and I consider it roadmap.</p>
+<h2 id="limitations">Limitations</h2>
+<ul>
+<li><strong>CoreLink is closed source.</strong> You cannot audit these
+claims from this post; the symbol references exist so a reader — or
+interviewer — can ask me to show exactly them.</li>
+<li><strong>npm and OCI cross-tenant dedup is design, not code.</strong>
+Today those bytes are per-tenant; the boundary is stated exactly
+above.</li>
+<li><strong>There is no takedown path today beyond manual
+surgery.</strong> When upstream removes a malicious package or a legal
+notice arrives, stopping those bytes means hand-editing the store’s
+index and blobs: no shipped takedown endpoint exists (every erase
+surface is tenant-bound — the internal ones to a verified GDPR/DSR
+request, the client-facing DELETEs to the caller’s own namespace — and
+<code>_public</code> is not an authenticatable tenant, so no endpoint
+can target it), and deleting a blob without its index entry would just
+trigger a re-fetch. Until that’s built, “cached” can mean “still served
+after upstream removed it” — a real gap, not a footnote.</li>
+<li><strong>The trust model assumes upstream is honest at fetch
+time.</strong> A compromised artifact fetched during the compromise
+window is mirrored faithfully; content-addressing makes the copy
+tamper-evident from that moment, not retroactively clean. Client-side
+verification remains the real integrity boundary where clients use
+it.</li>
+<li><strong>A shared cache is observable.</strong> Timing a fetch can
+reveal whether <em>some</em> tenant already warmed a given public
+artifact — not who. For public packages I judge that low-sensitivity; it
+is still a property per-org mirrors don’t have.</li>
+<li><strong>Losing the mirror should cost latency, never artifacts — but
+the fallback story is per-ecosystem.</strong> Brew falls back to
+upstream on its own (point it at a dead mirror and a stock client just
+re-requests the bottle from ghcr.io); a pip <code>--index-url</code>
+replacement does not fall back by itself. Precise failover semantics per
+surface are productization work, and I won’t pretend they’re uniform
+today.</li>
+<li><strong>No hit-rate or latency numbers are claimed here.</strong>
+The mirror hasn’t been benchmarked under representative multi-tenant
+load; by the rule the rest of my writing follows, a number exists when a
+run produced it.</li>
+<li><strong>Mutable metadata is the unglamorous half — and it’s the one
+mutable thing shared cross-tenant today.</strong> Package indexes can’t
+be immutable; pip’s is per-tenant, but unscoped npm <em>metadata</em> is
+cached cross-tenant on a 5-minute TTL. Nothing writes it but the
+service’s own pinned upstream fetch (the adapters are GET-only) — yet no
+checksum bounds it, because the checksum travels inside the metadata and
+stock npm clients follow <code>dist.tarball</code> verbatim to any host
+it names. The only real floor is client-side
+lockfile/<code>integrity</code>. It’s pip’s trust-the-mirror circularity
+shared across tenants: outside the artifact-bytes rule above, and on the
+attestation-feed roadmap below.</li>
+</ul>
+<h2 id="open-questions">Open questions</h2>
+<ul>
+<li>What is a defensible cross-tenant trust story for OCI base layers —
+digest-only sharing with tag resolution kept per-tenant? Signed
+provenance thresholds before a layer is eligible for
+<code>_public</code>?</li>
+<li>The sumdb gap: the concrete next artifact is a **signed, append-only
+attestation feed of <code>_public</code>‘s contents** —
+<code>(ecosystem, name, version, upstream-sha256) → stored content hash</code>
+— published where anyone can diff it against the registries’ own hashes,
+without my permission or cooperation. That would turn the weakest point
+of a closed-source mirror into the checkable one.</li>
+<li>Should <code>_public</code> population require <em>k</em>
+independent fetch confirmations, or a transparency-log witness, before
+bytes become shared — so a single poisoned fetch can’t seed every
+tenant?</li>
+<li>Garbage collection: what does eviction mean for a namespace whose
+whole value is being permanently warm?</li>
+</ul>
+<p>The one-sentence version: the token gates access, the content is
+shared — and knowing exactly where that stops being safe is the
+product.</p>
+<hr />
+<p><em>CoreLink is the platform behind <a
+href="https://humanguardrail.github.io/">the site’s journey
+demo</a>.</em></p>
+
+<footer>© 2026 Gustavo Schneiter · <a href="/">humanguardrail.github.io</a> · built to be verified, not trusted</footer>
+</article>
+</body>
+</html>

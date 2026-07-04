@@ -1,0 +1,569 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gustavo Schneiter — AI Infrastructure Engineer</title>
+<meta name="description" content="Gustavo Schneiter — execution infrastructure for AI agents. Rust, distributed systems, container runtimes. Built a multi-tenant content-addressed execution fabric, a git-native forge for agent fleets, and a daemonless container runtime.">
+<meta name="author" content="Gustavo Schneiter">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Gustavo Schneiter — AI Infrastructure Engineer">
+<meta property="og:description" content="Execution infrastructure for AI agents. Rust, distributed systems, container runtimes.">
+<meta property="og:image" content="https://humanguardrail.github.io/assets/og-card.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Gustavo Schneiter — AI Infrastructure Engineer">
+<meta name="twitter:description" content="Execution infrastructure for AI agents. Rust, distributed systems, container runtimes.">
+<meta name="twitter:image" content="https://humanguardrail.github.io/assets/og-card.png">
+<meta property="og:url" content="https://humanguardrail.github.io/">
+<link rel="canonical" href="https://humanguardrail.github.io/">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0e1013" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>▲</text></svg>">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"Person","name":"Gustavo Schneiter","jobTitle":"AI Infrastructure Engineer","url":"https://humanguardrail.github.io/","email":"mailto:gustavo@humangr.com","sameAs":["https://github.com/HumanGuardrail","https://www.linkedin.com/in/gustavo-schneiter/"],"knowsAbout":["Rust","Distributed Systems","Container Runtimes","Content-Addressed Storage","AI Agent Infrastructure"],"address":{"@type":"PostalAddress","addressLocality":"São Paulo","addressCountry":"BR"}}
+</script>
+<style>
+  :root{
+    color-scheme:light dark;
+    --ink:#0f1115; --body:#20242c; --muted:#5b6673; --faint:#646d7a;
+    --line:#e7e9ee; --line2:#cfd4dc; --bg:#ffffff; --bg2:#f7f8fa;
+    --accent:#2563eb; --accent-ink:#1d4ed8;
+    --navbg:rgba(255,255,255,.85);
+    --btnp-bg:#0f1115; --btnp-bg-h:#000; --btnp-fg:#ffffff;
+    --card-shadow:0 10px 30px -18px rgba(15,17,21,.25);
+    --diag-hl-bg:#eef3ff; --diag-hl-line:#c9d8ff;
+    --tag-oss-bg:#e7f3ea; --tag-oss-fg:#1a7f37;
+    --tag-prod-bg:#e7edfb; --tag-prod-fg:#1d4ed8;
+    --tag-rust-bg:#f3eae4; --tag-rust-fg:#a04a25;
+    --soon-fg:#a15c00; --soon-bg:#fdf3e3; --soon-line:#f5e2c0;
+    --term-bg:#0d1117; --term-fg:#c9d1d9; --term-green:#3fb950; --term-dim:#8b949e; --term-cyan:#39c5cf;
+    --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;
+    --maxw:940px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --ink:#e7e9ee; --body:#b6bcc6; --muted:#8b93a1; --faint:#7a828f;
+      --line:#23262c; --line2:#3a3f47; --bg:#0e1013; --bg2:#15181d;
+      --accent:#6ea8ff; --accent-ink:#8db8ff;
+      --navbg:rgba(14,16,19,.85);
+      --btnp-bg:#e7e9ee; --btnp-bg-h:#ffffff; --btnp-fg:#0f1115;
+      --card-shadow:0 10px 30px -18px rgba(0,0,0,.6);
+      --diag-hl-bg:#152238; --diag-hl-line:#2a3f63;
+      --tag-oss-bg:#12261a; --tag-oss-fg:#4ac26b;
+      --tag-prod-bg:#131f38; --tag-prod-fg:#79a7ff;
+      --tag-rust-bg:#2a1d14; --tag-rust-fg:#e08a5a;
+      --soon-fg:#d9a03f; --soon-bg:#241b09; --soon-line:#453412;
+    }
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;background:var(--bg);color:var(--body);
+    font-family:var(--sans);font-size:17px;line-height:1.62;
+    -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+  }
+  a{color:var(--accent);text-decoration:none}
+  a:hover{color:var(--accent-ink);text-decoration:underline}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 24px}
+  .diagram{margin:26px 0 0}
+  .diagram svg{width:100%;height:auto;max-width:760px;display:block;margin:0 auto}
+  .diagram .dbox{fill:var(--bg2);stroke:var(--line)}
+  .diagram .dhl{fill:var(--diag-hl-bg);stroke:var(--diag-hl-line)}
+  .diagram .dt{fill:var(--ink)}
+  .diagram .ds{fill:var(--muted)}
+  .diagram .dc{fill:var(--faint)}
+  .diagram .dht{fill:var(--accent-ink)}
+  .diagram .dhs{fill:var(--body)}
+  .diagram .darrow{fill:var(--accent)}
+  .diagram .pulse{fill:var(--accent)}
+  .diagram .flowline{stroke:var(--accent)}
+  .clv{display:grid;gap:18px;margin:28px 0 8px}
+  /* scroll-reveal (progressive enhancement — only active when JS sets html.js) */
+  .js .card,.js .wr,.js .clv,.js .chap{opacity:0;transform:translateY(16px)}
+  .js .card.in,.js .wr.in,.js .clv.in,.js .chap.in{opacity:1;transform:none;transition:opacity .6s ease,transform .7s cubic-bezier(.2,.7,.2,1)}
+  @media (prefers-reduced-motion:reduce){.js .card,.js .wr,.js .clv,.js .chap{opacity:1;transform:none;transition:none}}
+  @keyframes flowdash{to{stroke-dashoffset:-14}}
+  .flowline{stroke-dasharray:4 5;animation:flowdash 1.1s linear infinite}
+  @keyframes softpulse{0%,100%{opacity:.9}50%{opacity:.4}}
+  .pulse{animation:softpulse 2.8s ease-in-out infinite}
+  @keyframes blink{50%{opacity:0}}
+  .cur{color:var(--term-green);animation:blink 1.1s step-end infinite}
+  h1,h2,h3{color:var(--ink);line-height:1.2;letter-spacing:-.01em;margin:0}
+
+  /* NAV */
+  nav{position:sticky;top:0;z-index:20;background:var(--navbg);backdrop-filter:saturate(1.4) blur(8px);border-bottom:1px solid var(--line)}
+  nav .wrap{display:flex;align-items:center;justify-content:space-between;height:60px}
+  nav .brand{font-weight:700;color:var(--ink);font-size:16px;letter-spacing:-.02em}
+  nav .brand span{color:var(--accent)}
+  nav .links{display:flex;gap:22px;font-size:14.5px}
+  nav .links a{color:var(--muted);font-weight:500}
+  nav .links a:hover{color:var(--ink);text-decoration:none}
+  @media(max-width:600px){nav .links a.hide-sm{display:none}}
+
+  /* HERO */
+  header.hero{padding:76px 0 52px}
+  .eyebrow{font-family:var(--mono);font-size:13px;color:var(--accent-ink);font-weight:600;letter-spacing:.02em;text-transform:none;margin-bottom:18px}
+  header.hero h1{font-size:clamp(30px,5.4vw,50px);font-weight:800;letter-spacing:-.03em}
+  header.hero .role{font-size:clamp(18px,2.6vw,23px);color:var(--ink);font-weight:600;margin-top:10px}
+  header.hero .thesis{font-size:19px;color:var(--muted);max-width:640px;margin-top:20px}
+  .cta{display:flex;flex-wrap:wrap;gap:12px;margin-top:30px}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:11px 18px;border-radius:9px;font-size:15px;font-weight:600;border:1px solid var(--line);background:var(--bg2);color:var(--ink)}
+  .btn:hover{border-color:var(--line2);text-decoration:none;color:var(--ink)}
+  .btn.primary{background:var(--btnp-bg);color:var(--btnp-fg);border-color:var(--btnp-bg)}
+  .btn.primary:hover{background:var(--btnp-bg-h);color:var(--btnp-fg)}
+  .btn svg{width:16px;height:16px}
+  .avail{margin-top:22px;font-size:14.5px;color:var(--muted);display:flex;align-items:center;gap:9px}
+  .dot{width:9px;height:9px;border-radius:50%;background:var(--term-green);box-shadow:0 0 0 4px rgba(63,185,80,.16)}
+
+  /* TERMINAL */
+  .term{background:var(--term-bg);border-radius:12px;overflow:hidden;box-shadow:0 24px 60px -22px rgba(13,17,23,.5),0 4px 12px -6px rgba(13,17,23,.4);border:1px solid #22272e}
+  .term .bar{display:flex;align-items:center;gap:8px;padding:12px 15px;background:#161b22;border-bottom:1px solid #22272e}
+  .term .bar i{width:12px;height:12px;border-radius:50%;display:inline-block}
+  .term .bar .r{background:#ff5f56}.term .bar .y{background:#ffbd2e}.term .bar .g{background:#27c93f}
+  .term .bar .t{margin-left:8px;font-family:var(--mono);font-size:12.5px;color:var(--term-dim)}
+  .term pre{margin:0;padding:20px 20px 22px;font-family:var(--mono);font-size:14px;line-height:1.85;color:var(--term-fg);overflow-x:auto}
+  .term .p{color:var(--term-green);user-select:none}
+  .term .c{color:var(--term-dim)}
+  .term .h{color:var(--term-cyan)}
+  .term .o{color:#e3b341}
+  .term .hit{color:var(--term-green);font-weight:600}
+  .term .log{color:var(--term-fg)}
+  .js .term pre{min-height:11.6em}
+  .tbody{position:relative}
+  .playcap{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(13,17,23,.55);backdrop-filter:blur(2px);border:0;width:100%;cursor:pointer;transition:opacity .25s}
+  .playcap[hidden]{display:none}
+  .playbtn{display:inline-flex;align-items:center;gap:10px;background:var(--accent);color:#fff;border-radius:999px;padding:13px 24px;font-weight:700;font-size:15px;font-family:var(--sans);box-shadow:0 10px 36px -10px rgba(37,99,235,.8);pointer-events:none}
+  .playcap:hover .playbtn{transform:scale(1.04)}
+  .playbtn svg{width:14px;height:14px;flex:none}
+  figure.demo{margin:24px 0 0}
+  figure.demo img{width:100%;border-radius:10px;border:1px solid var(--line);display:block}
+  figure.demo figcaption{font-size:13.5px;color:var(--faint);margin-top:10px;font-family:var(--mono)}
+
+  /* SECTIONS */
+  section{padding:52px 0;border-top:1px solid var(--line)}
+  .sec-label{font-family:var(--mono);font-size:13px;color:var(--faint);font-weight:600;margin-bottom:8px}
+  section > .wrap > h2{font-size:clamp(23px,3.4vw,30px);font-weight:800;letter-spacing:-.02em}
+  section .lead{color:var(--muted);max-width:660px;margin:14px 0 0}
+
+  /* PROJECTS */
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:30px}
+  @media(max-width:720px){.grid{grid-template-columns:1fr}}
+  .card{border:1px solid var(--line);border-radius:13px;padding:22px 22px 20px;background:var(--bg);transition:border-color .15s,box-shadow .15s;display:flex;flex-direction:column}
+  .card:hover{border-color:var(--line2);box-shadow:var(--card-shadow)}
+  .card.flag{grid-column:1/-1;background:linear-gradient(180deg,var(--bg2),var(--bg))}
+  .card h3{font-size:19px;font-weight:750;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .tag{font-family:var(--mono);font-size:11px;font-weight:600;padding:3px 8px;border-radius:20px;letter-spacing:.02em}
+  .tag.oss{background:var(--tag-oss-bg);color:var(--tag-oss-fg)}
+  .tag.prod{background:var(--tag-prod-bg);color:var(--tag-prod-fg)}
+  .tag.rust{background:var(--tag-rust-bg);color:var(--tag-rust-fg)}
+  .card p{margin:12px 0 0;font-size:15px;color:var(--body);line-height:1.58}
+  /* CORELINK CHAPTERS */
+  .chapters{margin-top:36px}
+  .chap{display:grid;grid-template-columns:170px 1fr;gap:26px;padding:30px 0;border-top:1px solid var(--line)}
+  .chap:last-child{border-bottom:1px solid var(--line)}
+  .chap .kick{font-family:var(--mono);font-size:12px;color:var(--faint);font-weight:600;line-height:1.7;padding-top:5px}
+  .chap .kick b{display:block;color:var(--ink);font-size:14px;font-weight:700;font-family:var(--sans);letter-spacing:-.01em;margin-top:2px}
+  .chap .kick .tag{margin-top:8px;display:inline-block}
+  .chap h3{font-size:clamp(18px,2.6vw,21px);font-weight:750;letter-spacing:-.015em;line-height:1.3}
+  .chap .body{margin:10px 0 0;font-size:15px;line-height:1.62;color:var(--body);max-width:640px}
+  .chap .ev{margin-top:14px;font-family:var(--mono);font-size:12px;color:var(--faint);line-height:1.9}
+  @media(max-width:680px){.chap{grid-template-columns:1fr;gap:8px;padding:24px 0}}
+  .card .metrics{margin:14px 0 0;padding:0;list-style:none;display:flex;flex-wrap:wrap;gap:6px}
+  .card .metrics li{font-family:var(--mono);font-size:12px;color:var(--body);background:var(--bg2);border:1px solid var(--line);border-radius:6px;padding:3px 8px}
+  .card .foot{margin-top:16px;font-size:14px;display:flex;gap:16px;flex-wrap:wrap}
+
+  /* WRITING */
+  .subhead{font-family:var(--mono);font-size:12.5px;color:var(--faint);font-weight:600;margin:34px 0 0}
+  .writing{margin-top:28px;display:flex;flex-direction:column;gap:2px}
+  .writing.tight{margin-top:10px}
+  .wr .meta{flex:0 0 112px}
+  .wr>div:last-child{flex:1;min-width:0}
+  .wr{display:flex;gap:16px;padding:16px 0;border-bottom:1px solid var(--line);align-items:baseline}
+  .wr:last-child{border-bottom:0}
+  .wr .wt{font-weight:650;color:var(--ink);font-size:16px}
+  .wr .wd{color:var(--muted);font-size:14.5px;margin-top:3px}
+  .wr .meta{font-family:var(--mono);font-size:12px;color:var(--faint);white-space:nowrap;min-width:96px}
+  @media(max-width:600px){.wr{flex-direction:column;gap:3px}.wr .meta{flex:none}}
+  .soon{font-family:var(--mono);font-size:11px;color:var(--soon-fg);background:var(--soon-bg);border:1px solid var(--soon-line);border-radius:20px;padding:2px 9px;font-weight:600}
+
+  /* ABOUT */
+  .about p{font-size:17px;color:var(--body);max-width:680px}
+  .about p + p{margin-top:16px}
+
+  /* FOOTER */
+  footer{border-top:1px solid var(--line);padding:44px 0 60px;background:var(--bg2)}
+  footer .wrap{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px}
+  footer .fl{font-size:14.5px;color:var(--muted)}
+  footer .fr{display:flex;gap:20px;font-size:14.5px}
+  footer .fr a{color:var(--muted);font-weight:500}
+  footer .fr a:hover{color:var(--ink);text-decoration:none}
+  .fine{font-family:var(--mono);font-size:12px;color:var(--faint);margin-top:14px;max-width:var(--maxw)}
+</style>
+<script>document.documentElement.className += ' js';</script>
+</head>
+<body>
+
+<nav>
+  <div class="wrap">
+    <a class="brand" href="#top">Gustavo Schneiter<span>.</span></a>
+    <div class="links">
+      <a href="#work">Work</a>
+      <a href="#other" class="hide-sm">Projects</a>
+      <a href="#writing">Approach</a>
+      <a href="assets/Gustavo-Schneiter-Resume.pdf">Résumé</a>
+      <a href="mailto:gustavo@humangr.com">Contact</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero" id="top">
+  <div class="wrap">
+    <div class="eyebrow">// execution infrastructure for AI agents</div>
+    <h1>Gustavo Schneiter</h1>
+    <div class="role">AI Infrastructure Engineer · Rust · Distributed Systems</div>
+    <p class="thesis">The core of my work is <strong>CoreLink</strong> — a multi-tenant, content-addressed cache and execution fabric, live on Cloudflare's network across five production environments — where identical work is never repeated and compute is a disposable cursor over a shared store. The bill follows the structure: flat concurrency instead of metered minutes, zero egress instead of transfer fees. Rust, from edge workers to the kernel.</p>
+    <div class="cta">
+      <a class="btn primary" href="#work">See the work</a>
+      <a class="btn" href="https://github.com/HumanGuardrail">
+        <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        Code on GitHub
+      </a>
+      <a class="btn" href="assets/Gustavo-Schneiter-Resume.pdf">Résumé (PDF)</a>
+    </div>
+    <div class="avail"><span class="dot"></span> Open to systems / infrastructure / AI-engineering roles — remote or on-site, worldwide.</div>
+  </div>
+</header>
+
+<section id="work">
+  <div class="wrap">
+    <div class="sec-label">01 — selected work</div>
+    <h2>What I've built.</h2>
+    <p class="lead">Software re-does finished work, constantly: the same dependency compiled on a million machines, the same <code>node_modules</code> filling a million disks, CI re-testing code nobody touched. <strong>CoreLink</strong> is built on one bet — work is a pure function of its inputs, so give every piece of work a content address, do it once, share it. Watch it run below: the logs are real. No aspirational tense anywhere on this page.</p>
+
+    <div class="clv">
+      <div class="term">
+        <div class="bar"><i class="r" aria-hidden="true"></i><i class="y" aria-hidden="true"></i><i class="g" aria-hidden="true"></i><span class="t" id="termtitle">corelink — the journey, in six acts</span></div>
+<div class="tbody">
+<pre id="termdemo"><span class="p">$</span> clw snapshot --name demo-journey .   <span class="c"># tree → content-addressed snapshot</span>
+<span class="p">$</span> clw hydrate /tmp/fresh --name demo-journey
+<span class="p">$</span> clw -v run --input src -- cargo test <span class="c"># memoized: unchanged inputs never re-run</span><span class="cur">▋</span></pre>
+<button class="playcap" id="termplay" hidden aria-label="Play the CoreLink demo journey"><span class="playbtn"><svg viewBox="0 0 12 14" fill="currentColor" aria-hidden="true"><path d="M0 0 L12 7 L0 14 z"/></svg><span id="termplaylabel">Play the journey</span></span></button>
+</div>
+      </div>
+      <div class="diagram">
+        <svg viewBox="0 0 760 152" role="img" aria-label="CoreLink architecture: clients such as Bazel, Turborepo and agents talk to the CoreLink Cache — a content-addressed store plus action cache with tenant isolation model-checked in TLA+ — which feeds ephemeral Runners and clw Workspaces. Identical work is stored once on zero-egress R2 and shared across the org.">
+          <defs><marker id="clark" markerWidth="9" markerHeight="9" refX="7.5" refY="4.5" orient="auto"><path class="darrow" d="M0,0 L9,4.5 L0,9 z"/></marker></defs>
+          <text class="dc" x="380" y="16" text-anchor="middle" font-family="ui-monospace,monospace" font-size="11">content-addressed on zero-egress R2 — identical work is stored once and shared across the org</text>
+          <rect class="dbox" x="8" y="44" width="180" height="80" rx="10"/>
+          <text class="dt" x="98" y="72" text-anchor="middle" font-family="ui-monospace,monospace" font-size="13" font-weight="700">clients</text>
+          <text class="ds" x="98" y="92" text-anchor="middle" font-family="ui-monospace,monospace" font-size="10.5">Bazel · Turborepo</text>
+          <text class="ds" x="98" y="107" text-anchor="middle" font-family="ui-monospace,monospace" font-size="10.5">agents</text>
+          <line class="flowline" x1="192" y1="84" x2="258" y2="84" stroke-width="2" marker-end="url(#clark)"/>
+          <rect class="dhl" x="264" y="38" width="232" height="92" rx="12"/>
+          <circle class="pulse" cx="286" cy="58" r="4"/>
+          <text class="dht" x="380" y="66" text-anchor="middle" font-family="ui-monospace,monospace" font-size="14" font-weight="700">CoreLink Cache</text>
+          <text class="dhs" x="380" y="86" text-anchor="middle" font-family="ui-monospace,monospace" font-size="10.5">CAS + Action Cache</text>
+          <text class="dhs" x="380" y="102" text-anchor="middle" font-family="ui-monospace,monospace" font-size="10.5">isolation model-checked in TLA+</text>
+          <line class="flowline" x1="500" y1="84" x2="566" y2="84" stroke-width="2" marker-end="url(#clark)"/>
+          <rect class="dbox" x="572" y="44" width="180" height="80" rx="10"/>
+          <text class="dt" x="662" y="72" text-anchor="middle" font-family="ui-monospace,monospace" font-size="13" font-weight="700">consumers</text>
+          <text class="ds" x="662" y="92" text-anchor="middle" font-family="ui-monospace,monospace" font-size="10.5">Runners · Workspaces</text>
+          <text class="ds" x="662" y="107" text-anchor="middle" font-family="ui-monospace,monospace" font-size="10.5">ephemeral compute · clw</text>
+        </svg>
+      </div>
+    </div>
+
+    <div class="chapters">
+
+      <div class="chap">
+        <div class="kick">01 · the store<b>CoreLink Cache</b><span class="tag prod">deployed</span></div>
+        <div>
+          <h3>Identical work, stored once — for your whole org, and beyond.</h3>
+          <p class="body">Every artifact is addressed by what it <em>is</em> (BLAKE3), not where it lives — so the global cache holds one copy of everything. A teammate's build becomes your instant hit; CI's compile lands warm on your laptop. Public packages go further: a shared cross-tenant mirror fetches each wheel or bottle from upstream <em>once, ever</em>, while cryptographic tenant isolation — model-checked in TLA+ — walls every org's private work off. Your tools already speak it (Bazel, Turborepo, sccache; npm, pip, brew, OCI), and the store is zero-egress R2: pulling from the cache is free, exactly where S3-backed caches bleed.</p>
+          <div class="ev">48 TLA+ specs in CI · BYOK across 4 KMS · per-tenant $-ceiling, fail-closed · Ed25519 audit log, verified offline · no unsafe (one audited C-FFI exception)</div>
+        </div>
+      </div>
+
+      <div class="chap">
+        <div class="kick">02 · the compute<b>CoreLink Runners</b><span class="tag prod">deployed</span></div>
+        <div>
+          <h3>CI that stops repeating itself — and stops billing by the minute.</h3>
+          <p class="body">Runners boot cache-warm: inputs are already local when the job starts, and memoized steps replay instead of re-running. Each job gets a fresh, fail-closed microVM, destroyed afterwards; images are digest-pinned and refused unless verified; boxes carry per-lease scoped tokens, never master credentials; every result returns as an Ed25519-signed attestation binding the full outcome. The bill changes shape — flat per parallel runner, unlimited minutes; modeled ~60–70% under hosted per-minute CI at typical use, before memoization zeroes the repeats.</p>
+          <div class="ev">cap-safety proven live · Postgres advisory-lock admission · recursive adversarial audit: 28 findings incl. real escape vectors → zero P0/P1</div>
+        </div>
+      </div>
+
+      <div class="chap">
+        <div class="kick">03 · the workspaces<b>CoreLink Workspaces</b><span class="tag prod">shipped</span></div>
+        <div>
+          <h3>Your working tree stops being a place on a disk — it becomes an address.</h3>
+          <p class="body"><code>clw</code> snapshots a directory into the store and hydrates it on any machine in seconds — only the chunks that machine is missing travel. Heavy checkouts stop duplicating themselves across every laptop and runner; commands are memoized, so unchanged inputs never re-run; compute becomes a disposable cursor you point at work. The journey above ran these exact commands — <a href="https://github.com/HumanGuardrail/clw-releases">install it</a> and run them yourself.</p>
+          <div class="ev">shipped to Homebrew · five-target releases, minisign-signed · per-crate SBOM · local L1 cache</div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="grid">
+
+      <div class="card">
+        <h3>hugit <span class="tag prod">closed beta</span> <span class="tag rust">Rust</span></h3>
+        <p>A git-compatible, LLM-native forge for agent fleets. Serves the real git wire protocol (push/clone) directly from content-addressed storage; a union-tested landing queue batches green branches and, on red, a bisect isolates the culprit in ≤⌈log₂&thinsp;n⌉ probes — a bound the test suite proves. Refs are an append-only, hash-chained event log with compensating-event undo, so a force-push can't destroy history; the Ed25519 integrity spine is hardened through 13 adversarial security-review rounds.</p>
+        <ul class="metrics"><li>20 crates</li><li>1,971 tests green in CI</li><li>cargo-deny clean · 250 pinned deps</li></ul>
+      </div>
+
+      <div class="card">
+        <h3>HuGR Tools <span class="tag oss">open source</span> <span class="tag prod">production-proven</span></h3>
+        <p>An MCP tool-server fleet on Cloudflare Workers — 630 tools across 37 deployable workers on one frozen kernel: a 3-tier fail-closed auth chain, Durable-Object distributed rate limiting, one dispatch pipeline written once. An OpenAPI→MCP forge generated the AWS surface; the value is the handwritten composite tools — Datadog temporal root-cause correlation, Stripe multi-currency VAT reconciliation, Vercel deploy-failure triage proven on a real failed deploy. BYOK per request, zero stored secrets.</p>
+        <ul class="metrics"><li>630 tools · 37 workers</li><li>8,538 tests · 0 failing</li><li>mutation-tested (Stryker)</li></ul>
+        <div class="foot"><a href="https://github.com/HumanGuardrail/HuGR_Tools">Repository ↗</a></div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<section id="other">
+  <div class="wrap">
+    <div class="sec-label">02 — open craft</div>
+    <h2>The open proof.</h2>
+    <p class="lead">Standalone open-source builds that put the platform's engineering in public — clone them, run the benchmarks, read the ledgers.</p>
+    <div class="grid">
+
+      <div class="card">
+        <h3>Lightr <span class="tag oss">open source</span></h3>
+        <p>A daemonless, imageless container runtime in Rust — a from-scratch exercise that makes the platform's ideas public and reproducible: no daemon, no images, memoized runs. On public CI it cold-starts rootless containers in 30.8 ms (4× rootless podman at identical isolation), replays memoized re-builds ~2,000× faster than Docker redoing the work, and its Kubernetes CRI backend runs at 9.32× smaller resident footprint than containerd. Every number traces to the CI run that produced it, in the repo's benchmark ledger.</p>
+        <ul class="metrics"><li>30.8 ms cold start</li><li>~2,000× memo vs Docker</li><li>critest 34/34 · real backend</li></ul>
+        <div class="foot"><a href="https://github.com/HumanGuardrail/hugr-lightr">Repository ↗</a><a href="https://github.com/HumanGuardrail/lightr-cri">CRI shell ↗</a><a href="https://github.com/HumanGuardrail/hugr-lightr/blob/main/docs/METHOD.md">How it was built ↗</a></div>
+      </div>
+
+      <div class="card">
+        <h3>Datarail <span class="tag oss">open source</span></h3>
+        <p>An end-to-end-sealed data rail and Kafka-wire-compatible broker whose storage never sees plaintext (<code>#![forbid(unsafe_code)]</code>): per-cofre X25519 key-wrap, offline-verifiable Merkle delivery receipts, exactly-once into Postgres (CI-gated against real Postgres 16), FASP-style congestion control. An author-commissioned adversarial audit, run outside my own harness, measured the real broker binary at 3.0 ms cold start and 3.3 MB idle RSS through a 50,000-message cycle with zero loss — and grepped the data directory clean of plaintext.</p>
+        <ul class="metrics"><li>3.0 ms cold start</li><li>3.3 MB RSS · 2 MB binary</li><li>50k msgs · zero loss · disk = ciphertext</li></ul>
+        <div class="foot"><a href="https://github.com/HumanGuardrail/HuGR_Datarail">Repository ↗</a><a href="https://github.com/HumanGuardrail/HuGR_Datarail/blob/main/docs/BENCH-INDEPENDENT-2026-07-01.md">Audit method ↗</a></div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<section id="writing">
+  <div class="wrap">
+    <div class="sec-label">03 — how I think</div>
+    <h2>Verified, not trusted.</h2>
+    <p class="lead">One discipline runs through everything I build: a claim is worth only its evidence. A number carries the hardware and method that produced it, or it's labeled a target — never stated as fact. Limitations are named up front, prior art is cited, and nothing ships as "done" until a test says so. It's slower, and it's the only way I'd want my name on infrastructure.</p>
+
+    <div class="subhead">// patterns I'll defend in an interview</div>
+    <div class="writing tight">
+      <div class="wr">
+        <div class="meta">Cache</div>
+        <div>
+          <div class="wt">Isolation in the keyspace itself, not in a lookup check</div>
+          <div class="wd">Every blob path is derived by HMAC-SHA256 over the tenant identity under a secret key the edge can't read — another tenant's path can't even be guessed, and a doc-block in the code explicitly forbids adding a test backdoor.</div>
+        </div>
+      </div>
+      <div class="wr">
+        <div class="meta">_public</div>
+        <div>
+          <div class="wt">The internet's packages, downloaded once</div>
+          <div class="wd">npm, PyPI, Homebrew and OCI served read-through from a content-addressed mirror: a public wheel or bottle is fetched from upstream once, ever, then shared across tenants from the <code>_public</code> namespace — the token gates access, the bytes are shared, and private packages never enter it. Every new customer leaves the mirror more complete for the next one.</div>
+        </div>
+      </div>
+      <div class="wr">
+        <div class="meta">OKF wiki</div>
+        <div>
+          <div class="wt">A wiki that can't drift from the code</div>
+          <div class="wd">The architecture is knowledge-engineered: 157 concepts in an Open Knowledge Format bundle, each naming the source files it explains and pinned to a commit. CI gates the drift — and when cited code changes, a pipeline dispatches an agent to reconcile the concept. Agents load a subsystem's concepts before touching it.</div>
+        </div>
+      </div>
+      <div class="wr">
+        <div class="meta">Lightr</div>
+        <div>
+          <div class="wt"><a href="https://github.com/HumanGuardrail/hugr-lightr/tree/main/crates/lightr-engine/src/engine/ns/ns_impl">A pipe that can't lie about exec</a></div>
+          <div class="wd">PID 1 arms an FD_CLOEXEC pipe before <code>execv</code>: EOF means the workload is truly running, bytes mean a diagnosed failure — closing the false-"Running" window most runtimes just tolerate.</div>
+        </div>
+      </div>
+      <div class="wr">
+        <div class="meta">HuGR Tools</div>
+        <div>
+          <div class="wt"><a href="https://github.com/HumanGuardrail/HuGR_Tools/blob/main/packages/kernel/src/identity/hugr-auth.ts">Strongest-first auth with reasoned fall-through</a></div>
+          <div class="wd">RS256 → HMAC → introspection, where a rejection by a configured local verifier falls through instead of failing — so signing keys rotate with zero downtime. The rate limiter fails open while auth fails closed, and both choices are argued in the code.</div>
+        </div>
+      </div>
+      <div class="wr">
+        <div class="meta">Datarail</div>
+        <div>
+          <div class="wt"><a href="https://github.com/HumanGuardrail/HuGR_Datarail/blob/main/crates/datarail-connectors/src/postgres_sink.rs">Exactly-once lives inside the sink's transaction</a></div>
+          <div class="wd">The dedup watermark advances in the same Postgres commit that lands the records, collapsing the "landed but not deduped" crash window — with the honest scope gate stated up front: positional watermark ⇒ append-ordered sources only.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="subhead">// the discipline, in public</div>
+    <div class="writing tight">
+      <div class="wr">
+        <div class="meta">essay</div>
+        <div>
+          <div class="wt"><a href="writing/public-mirror.html">Public packages only need to be downloaded once</a></div>
+          <div class="wd">The design of a cross-tenant, content-addressed mirror for npm, PyPI, Homebrew and OCI — public bytes fetched from upstream once and shared across every customer — and, the part I care about, exactly where that stops being safe. Every claim traces to the code.</div>
+        </div>
+      </div>
+      <div class="wr">
+        <div class="meta">papers · <span class="soon">soon</span></div>
+        <div>
+          <div class="wt">More architecture notes on execution infrastructure</div>
+          <div class="wd">Problem-first, honest about limits, prior art cited. Links land here as they publish.</div>
+        </div>
+      </div>
+      <div class="wr">
+        <div class="meta">truth ledger</div>
+        <div>
+          <div class="wt"><a href="https://github.com/HumanGuardrail/hugr-lightr/blob/main/docs/spec/parity-audit.md">A truth ledger — feature-by-feature reality</a></div>
+          <div class="wd">Every feature maps to the test that proves it, or the honest reason it isn't — including three times an audit reversed my own earlier claim. It's a Lightr artifact, but the same tense-law governs CoreLink.</div>
+        </div>
+      </div>
+      <div class="wr">
+        <div class="meta">method</div>
+        <div>
+          <div class="wt"><a href="https://github.com/HumanGuardrail/hugr-lightr/blob/main/docs/METHOD.md">Directing an AI-agent fleet under real gates</a></div>
+          <div class="wd">ADR-gated design, a fleet in isolated worktrees, adversarial audits — how one person ships at fleet throughput without the claim-rot.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="about" class="about">
+  <div class="wrap">
+    <div class="sec-label">04 — about</div>
+    <h2>Background.</h2>
+    <p>I've spent the last two years at the front line of what's probably the fastest revolution any industry has been through — learning the limits of working with LLMs first-hand, and building the processes and methods that get production-grade software out of them.</p>
+    <p>Before infrastructure, I ran product and delivery: founding Product Owner then Project Manager of a B2B commodities marketplace across Latin America, and operations for a construction company in Melbourne. Trilingual — English, Portuguese, Spanish.</p>
+    <p>São Paulo, Brazil (UTC−3). Open to remote or on-site roles worldwide. <a href="mailto:gustavo@humangr.com">gustavo@humangr.com</a></p>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="fl">© <span id="yr">2026</span> Gustavo Schneiter · Built to be verified, not trusted.</div>
+    <div class="fr">
+      <a href="https://github.com/HumanGuardrail">GitHub</a>
+      <a href="https://www.linkedin.com/in/gustavo-schneiter/">LinkedIn</a>
+      <a href="mailto:gustavo@humangr.com">Email</a>
+      <a href="assets/Gustavo-Schneiter-Resume.pdf">Résumé</a>
+    </div>
+  </div>
+  <div class="wrap"><p class="fine">Benchmark figures carry their measurement date and a public reproduce path in the linked ledgers. Engines not yet validated on given hardware are stated as targets in the source repositories, never as measured results.</p></div>
+</footer>
+
+<script>
+document.getElementById('yr').textContent=new Date().getFullYear();
+(function(){
+  var els=[].slice.call(document.querySelectorAll('.card,.wr,.clv,.chap'));
+  function showAll(){els.forEach(function(e){e.classList.add('in');});}
+  if(!('IntersectionObserver' in window)){showAll();return;}
+  var io=new IntersectionObserver(function(entries){
+    entries.forEach(function(e){ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); } });
+  },{threshold:0.1, rootMargin:'0px 0px -30px 0px'});
+  els.forEach(function(e){ io.observe(e); });
+  setTimeout(showAll, 1800); // safety: never leave content hidden
+})();
+(function(){
+  var pre=document.getElementById('termdemo');
+  var cap=document.getElementById('termplay');
+  var lbl=document.getElementById('termplaylabel');
+  var title=document.getElementById('termtitle');
+  if(!pre||!cap) return;
+  var TITLE0='corelink — the journey, in six acts';
+  // t: 'cap' = act caption · 'cmd' = typed command · 'out' = printed line
+  var ACTS=[
+    {name:'the tree becomes an object', lines:[
+      {t:'cmd', s:'clw snapshot --name demo-journey .'},
+      {t:'log', s:'snapshot complete'},
+      {t:'log', s:'  root:            d82d924b33e7…685043be'},
+      {t:'log', s:'  files:           3'},
+      {t:'log', s:'  chunks_uploaded: 3'},
+      {t:'out', s:'real output, real run — the tree is now one content-addressed ref', cls:'c'}]},
+    {name:'any machine, same store', lines:[
+      {t:'cmd', s:'clw hydrate /tmp/fresh --name demo-journey'},
+      {t:'log', s:'hydrate complete'},
+      {t:'log', s:'  root:              d82d924b33e7…685043be'},
+      {t:'log', s:'  bytes_from_cache:  205'},
+      {t:'log', s:'  bytes_downloaded:  0'},
+      {t:'out', s:'same root, zero bytes moved — this machine\'s L1 already held every chunk; a fresh machine pulls from R2, zero egress fees', cls:'c'}]},
+    {name:'work, memoized', lines:[
+      {t:'cmd', s:'clw -v run --input src --input Cargo.toml -- cargo test'},
+      {t:'log', s:'[clw] cache hit', cls:'hit'},
+      {t:'log', s:'test result: ok. 1 passed; 0 failed'},
+      {t:'log', s:'    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.64s'},
+      {t:'out', s:'that 1.64s is the *recorded* output replaying — unchanged inputs, nothing re-ran', cls:'c'}]},
+    {name:'your build tool already speaks it', lines:[
+      {t:'cmd', s:'TURBO_API=https://corelink-api.humangr.com turbo run build'},
+      {t:'out', s:'work a teammate (or CI) already did lands as your cache hit', cls:'c'},
+      {t:'out', s:'the same store serves Bazel (REAPI v2) and sccache/cargo — no workflow rewrite', cls:'c'}]},
+    {name:'the internet\'s packages, downloaded once', lines:[
+      {t:'cmd', s:'pip install --index-url https://corelink-api.humangr.com/pip/acme/simple numpy'},
+      {t:'out', s:'the wheel comes from the shared _public mirror — fetched from upstream once, ever', cls:'c'},
+      {t:'out', s:'access gated by token · bytes shared · private packages never enter the mirror', cls:'c'}]},
+    {name:'trust, verified on your machine', lines:[
+      {t:'cmd', s:'corelink audit verify-ndjson export.ndjson'},
+      {t:'out', s:'the Ed25519-signed hash chain checks out offline — no call home, no trust required', cls:'hit'},
+      {t:'out', s:'identical work never repeated · zero egress · verified, not trusted ▪', cls:'h'}]}
+  ];
+  var cur=document.createElement('span'); cur.className='cur'; cur.textContent='▋';
+  function el(cls,t){ var s=document.createElement('span'); s.className=cls; s.textContent=t; return s; }
+  function txt(t){ return document.createTextNode(t); }
+  function put(node){ pre.insertBefore(node,cur); pre.scrollTop=pre.scrollHeight; }
+  var playing=false;
+  cap.hidden=false;
+  cap.addEventListener('click', function(){
+    if(playing) return;
+    playing=true; cap.hidden=true;
+    pre.textContent=''; pre.appendChild(cur);
+    pre.style.height='16.5em'; pre.style.overflow='hidden';
+    act(0);
+  });
+  function act(i){
+    if(i>=ACTS.length){
+      title.textContent=TITLE0;
+      setTimeout(function(){ lbl.textContent='Replay the journey'; cap.hidden=false; playing=false; }, 900);
+      return;
+    }
+    var a=ACTS[i];
+    title.textContent='act '+(i+1)+'/6 — '+a.name;
+    if(i>0) put(txt('\n'));
+    put(el('c','── '+(i+1)+'/6 · '+a.name+' ──')); put(txt('\n'));
+    line(a.lines,0,function(){ setTimeout(function(){ act(i+1); },1050); });
+  }
+  function line(ls,j,done){
+    if(j>=ls.length){ done(); return; }
+    var l=ls[j];
+    if(l.t==='cmd'){
+      put(el('p','$')); put(txt(' '));
+      typeChars(l.s,0,function(){
+        if(l.note) put(el('c',l.note));
+        setTimeout(function(){ put(txt('\n')); line(ls,j+1,done); },340);
+      });
+    }else if(l.t==='log'){
+      setTimeout(function(){
+        put(el(l.cls||'log','  '+l.s)); put(txt('\n'));
+        line(ls,j+1,done);
+      },180);
+    }else{
+      setTimeout(function(){
+        put(el(l.cls,'  # '+l.s)); put(txt('\n'));
+        line(ls,j+1,done);
+      },300);
+    }
+  }
+  function typeChars(str,j,done){
+    if(j>=str.length){ done(); return; }
+    put(txt(str[j]));
+    setTimeout(function(){ typeChars(str,j+1,done); },24+((j*7)%4)*7);
+  }
+})();
+</script>
+</body>
+</html>
